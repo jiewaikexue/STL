@@ -1,0 +1,17 @@
+
+
+1.第一级空间配置器:
+暨:
+typedef __malloc_alloc_template<0> malloc_alloc;
+typedef malloc_alloc alloc;        
+
+       1.1 空间的配置和释放直接使用malloc和free
+       1.2 还需要模拟set_new_handler()情况(及内存不足)
+2. 二级空间配置器
+    1.维护16个自由链表
+            --负责16种小型区块的次配置能力
+            --二级空间配置器一来与memory pool  而memory pool以malloc配置而得
+            --如果内存池不够了,就转调一级空间配置器
+            --如果需求的空间大小大于128字节,就直接转调一级空间配置器
+
+

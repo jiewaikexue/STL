@@ -1,0 +1,40 @@
+
+//alloc是根本的空间配置器
+
+
+//空间配置器下又分为两级空间配置器
+            -----一级: __malloc_alloc_template<0>
+
+            -----二级:__default_alloc_template
+//我们可以指定alloc是几级空间配置器
+
+#ifdef _USE_MALLOC
+...
+typedef __malloc_alloc_template<0> malloc_alloc;
+typedef malloc_alloc alloc;           // 令alloc为第一级配置器
+#else
+...
+// 令alloc为第二级配置器
+typedef __default_alloc_template<__NODE_ALLOCATOR_THREADS, 0> alloc;
+#endif     /* ! _USE_MALLOC*/
+
+
+// 无论alloc是几级空间配置器,都会对其它进行进一步的封装
+
+
+template<class T, class Alloc>
+class simple_alloc {
+    public:
+        //配置空间
+        static T *allocate(size_t n)
+        { return 0 == n ? 0 : (T*)Alloc::allocate(n * sizeof(T));  }
+        static T *allocate(void)
+        { return (T*)Alloc::allocate(n * sizeof(T));  }
+        //释放空间
+        static T *deallocate(T *p, size_t n)
+        { if( 0 != n ) ? 0 : (T*)Alloc::deallocate(p, n * sizeof(T));  }
+        static T *allocate(size_t n)
+        { Alloc::deallocate(p, sizeof(T));  }
+
+
+};
