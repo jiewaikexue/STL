@@ -1,0 +1,72 @@
+
+1. 一级空间配置器中 并没有使用set_new_handler机制
+而是模仿实现了一个set_malloc_handler
+
+2.为什么 不适用set_new_handler?
+    根本原因是没有使用 operator new :---->历史因素
+    c++并没有提供相应于remalloc的内存配置操作
+
+
+
+new_handler行为了解:effective c++ 49
+
+1. 什么是new_handler
+    >> 当 operator new无法分配到足够的内存时,他默认会抛出一个异常
+    >>在抛出异常之前,无法分配到足够的内存之后,operator new会先调用 new_handler
+
+    new_handler一班是由客户指定的:
+    所以客户必须调用set_new_handler: ---->参考 set_malloc_handler和my_alloc_handler
+
+
+    set_new_handler的实现
+
+    namespace std {
+        // 定义一个函数指针 void (*)()
+        // 该函数指针用new_handler代替
+        typedef void (* new_handkler)();
+        new_handler set_new_handler( new_handler p )throw();
+        // 函数指针 set_new_handler(函数指针p) throw();
+    }
+
+
+    当operator new 无法满足内存申请时,就会一直不断地调用new_handler
+
+    
+
+    new_handler设计原则
+    1.让更多的内存可以被使用:
+    >> 这边造成operator new 内的下一次内存分配动作可能会成功,
+    >> 做法: 
+    >>> 已开始就分配相当大的一块内存
+    >>> 当new_handler第一次被调用的时候,吧他们黄给程序使用
+    2.安装新的new_handlaer:
+    >> 如果目前这个new_handler无法获取更多的可用的内存但是他知道另一个new_handler可以申请到更多的可用内存,这样就会安装另一个newhandler
+    2.卸载new_handler:
+    >>也就是将null指针创给set_new_handler.一旦没有安装任何new_handeler.operator new 会在 分配失败之后 抛出异常之前调用newhandler.此时new_handler为null 直接跳过 直接抛异常
+    3. 抛出bad_alloc
+    >>这样的异常不会被operator new捕捉,因此会被传播到内存索求处 !!!!!
+    4. 不返回
+    >>选择调用abort 或者exit
+
+
+
+
+
+
+
+    operator new 做了几件事
+ 1. 调用标准的set_new_handler函数,告诉错误处理函数,这样 会安装 new_handler
+ 2. 分配内存
+    2.1 如果内存分配成功: 
+        
+    2.2 如果分配失败
+        >> 会调用用户指定的new_handler函数
+        >> 如果 new_operator无法分配足够的内存
+        
+            >>> 2.2.1恢复原本的new_operator
+            >>>       再抛出bad_alloc异常直接向内存索求
+
+
+            >>> 2.2.2如果这个new_handler函数知道别的new_handler可以分配更多可用内存,就会安装另一个new_handler
+                >>>>新的newhandler 在完成工作之后 会恢复成oldnewhandler
+    
